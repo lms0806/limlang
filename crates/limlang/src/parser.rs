@@ -1,8 +1,10 @@
-use crate::expr::expr;
+use expr::expr;
 use crate::lexer::{Lexer, SyntaxKind};
 use crate::syntax::{LimlangLanguage, SyntaxNode};
 use rowan::{Checkpoint, GreenNode, GreenNodeBuilder, Language};
 use std::iter::Peekable;
+
+mod expr;
 
 pub struct Parser<'a> {
   lexer: Peekable<Lexer<'a>>,

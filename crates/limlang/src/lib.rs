@@ -1,7 +1,6 @@
 mod lexer;
 pub mod parser;
 mod syntax;
-mod expr;
 
 use crate::parser::Parser;
 

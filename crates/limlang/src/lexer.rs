@@ -35,6 +35,12 @@ pub(crate) enum SyntaxKind {
   #[token("=")]
   Equals,
 
+  #[token("(")]
+  LParen,
+
+  #[token(")")]
+  RParen,
+
   #[token("{")]
   LBrace,
 
@@ -162,5 +168,15 @@ mod tests {
   #[test]
   fn lex_single_char_identifier() {
     check("x", SyntaxKind::Ident);
+  }
+
+  #[test]
+  fn lex_left_parenthesis() {
+    check("(", SyntaxKind::LParen);
+  }
+
+  #[test]
+  fn lex_right_parenthesis() {
+    check(")", SyntaxKind::RParen);
   }
 }
