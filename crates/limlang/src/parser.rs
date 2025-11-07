@@ -1,62 +1,75 @@
-use expr::expr;
-use crate::lexer::{Lexer, SyntaxKind};
-use crate::syntax::{LimlangLanguage, SyntaxNode};
-use rowan::{Checkpoint, GreenNode, GreenNodeBuilder, Language};
-use std::iter::Peekable;
-
+mod event;
 mod expr;
+mod sink;
+mod source;
 
-pub struct Parser<'a> {
-  lexer: Peekable<Lexer<'a>>,
-  builder: GreenNodeBuilder<'static>,
+use crate::lexer::{Lexeme, Lexer, SyntaxKind};
+use crate::parser::source::Source;
+use crate::syntax::SyntaxNode;
+use event::Event;
+use expr::expr;
+use rowan::GreenNode;
+use sink::Sink;
+
+struct Parser<'l, 'input> {
+  source: Source<'l, 'input>,
+  events: Vec<Event>,
 }
 
-impl<'a> Parser<'a> {
-  pub fn new(input: &'a str) -> Self {
+impl<'l, 'input> Parser<'l, 'input> {
+  fn new(lexemes: &'l [Lexeme<'input>]) -> Self {
     Self {
-      lexer: Lexer::new(input).peekable(),
-      builder: GreenNodeBuilder::new(),
+      source: Source::new(lexemes),
+      events: Vec::new(),
     }
   }
 
-  pub fn parse(mut self) -> Parse {
+  fn parse(mut self) -> Vec<Event> {
     self.start_node(SyntaxKind::Root);
-
     expr(&mut self);
-
     self.finish_node();
 
-    Parse {
-      green_node: self.builder.finish(),
-    }
-  }
-
-  pub(crate) fn start_node_at(&mut self, checkpoint: Checkpoint, kind: SyntaxKind) {
-    self.builder
-        .start_node_at(checkpoint, LimlangLanguage::kind_to_raw(kind));
+    self.events
   }
 
   fn start_node(&mut self, kind: SyntaxKind) {
-    self.builder.start_node(LimlangLanguage::kind_to_raw(kind));
+    self.events.push(Event::StartNode { kind });
   }
 
-  pub(crate) fn finish_node(&mut self) {
-    self.builder.finish_node();
+  fn start_node_at(&mut self, checkpoint: usize, kind: SyntaxKind) {
+    self.events.push(Event::StartNodeAt { kind, checkpoint });
   }
 
-  pub(crate) fn peek(&mut self) -> Option<SyntaxKind> {
-    self.lexer.peek().map(|(kind, _)| *kind)
+  fn finish_node(&mut self) {
+    self.events.push(Event::FinishNode);
   }
 
-  pub(crate) fn bump(&mut self) {
-    let (kind, text) = self.lexer.next().unwrap();
+  fn bump(&mut self) {
+    let Lexeme { kind, text } = self.source.next_lexeme().unwrap();
 
-    self.builder
-        .token(LimlangLanguage::kind_to_raw(kind), text.into());
+    self.events.push(Event::AddToken {
+      kind: *kind,
+      text: (*text).into(),
+    });
   }
 
-  pub(crate) fn checkpoint(&self) -> Checkpoint {
-    self.builder.checkpoint()
+  fn checkpoint(&self) -> usize {
+    self.events.len()
+  }
+
+  fn peek(&mut self) -> Option<SyntaxKind> {
+    self.source.peek_kind()
+  }
+}
+
+pub fn parse(input: &str) -> Parse {
+  let lexemes: Vec<_> = Lexer::new(input).collect();
+  let parser = Parser::new(&lexemes);
+  let events = parser.parse();
+  let sink = Sink::new(&lexemes, events);
+
+  Parse {
+    green_node: sink.finish(),
   }
 }
 
@@ -100,6 +113,16 @@ Root@0..3
       expect![[r#"
 Root@0..7
   Ident@0..7 "counter""#]],
+    );
+  }
+
+  #[test]
+  fn parse_whitespace() {
+    check(
+      "   ",
+      expect![[r#"
+Root@0..3
+  Whitespace@0..3 "   ""#]],
     );
   }
 }

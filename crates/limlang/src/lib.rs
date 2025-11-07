@@ -2,7 +2,7 @@ mod lexer;
 pub mod parser;
 mod syntax;
 
-use crate::parser::Parser;
+use crate::parser::parse;
 
 #[cfg(test)]
 mod tests {
@@ -14,6 +14,6 @@ mod tests {
 
 #[cfg(test)]
 fn check(input: &str, expected_tree: expect_test::Expect) {
-  let parse = Parser::new(input).parse();
+  let parse = parse(input);
   expected_tree.assert_eq(&parse.debug_tree());
 }
