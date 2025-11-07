@@ -5,7 +5,7 @@ use num_derive::{FromPrimitive, ToPrimitive};
   Debug, Copy, Clone, PartialEq, Logos, FromPrimitive, ToPrimitive, Hash, Ord, PartialOrd, Eq,
 )]
 pub(crate) enum SyntaxKind {
-  #[regex(" +")]
+  #[regex("[ \n]+")]
   Whitespace,
 
   #[token("fn")]
@@ -47,6 +47,9 @@ pub(crate) enum SyntaxKind {
   #[token("}")]
   RBrace,
 
+  #[regex("#.*")]
+  Comment,
+
   #[error]
   Error,
 
@@ -55,6 +58,12 @@ pub(crate) enum SyntaxKind {
   BinaryExpr,
 
   PrefixExpr,
+}
+
+impl SyntaxKind {
+  pub(crate) fn is_trivia(self) -> bool {
+    matches!(self, Self::Whitespace | Self::Comment)
+  }
 }
 
 impl From<SyntaxKind> for rowan::SyntaxKind {
@@ -99,6 +108,11 @@ mod tests {
   fn check(input: &str, kind: SyntaxKind) {
     let mut lexer = Lexer::new(input);
     assert_eq!(lexer.next(), Some(Lexeme { kind, text: input }));
+  }
+
+  #[test]
+  fn lex_spaces_and_newlines() {
+    check("  \n ", SyntaxKind::Whitespace);
   }
 
   #[test]
@@ -184,5 +198,10 @@ mod tests {
   #[test]
   fn lex_right_parenthesis() {
     check(")", SyntaxKind::RParen);
+  }
+
+  #[test]
+  fn lex_comment() {
+    check("# foo", SyntaxKind::Comment);
   }
 }
