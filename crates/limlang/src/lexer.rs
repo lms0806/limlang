@@ -1,7 +1,9 @@
 use logos::Logos;
 use num_derive::{FromPrimitive, ToPrimitive};
 
-#[derive(Debug, Copy, Clone, PartialEq, Logos, FromPrimitive, ToPrimitive)]
+#[derive(
+  Debug, Copy, Clone, PartialEq, Logos, FromPrimitive, ToPrimitive, Hash, Ord, PartialOrd, Eq,
+)]
 pub(crate) enum SyntaxKind {
   #[regex(" +")]
   Whitespace,
@@ -12,7 +14,7 @@ pub(crate) enum SyntaxKind {
   #[token("let")]
   LetKw,
 
-  #[regex("[A-Za-z][A-Za-z0-9]+")]
+  #[regex("[A-Za-z][A-Za-z0-9]*")]
   Ident,
 
   #[regex("[0-9]+")]
@@ -44,7 +46,9 @@ pub(crate) enum SyntaxKind {
 
   Root,
 
-  BinOp,
+  BinaryExpr,
+
+  PrefixExpr,
 }
 
 impl From<SyntaxKind> for rowan::SyntaxKind {
@@ -153,5 +157,10 @@ mod tests {
   #[test]
   fn lex_right_brace() {
     check("}", SyntaxKind::RBrace);
+  }
+
+  #[test]
+  fn lex_single_char_identifier() {
+    check("x", SyntaxKind::Ident);
   }
 }
