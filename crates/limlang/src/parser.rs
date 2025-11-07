@@ -1,9 +1,11 @@
 mod event;
 mod expr;
+mod marker;
 mod sink;
 mod source;
 
 use crate::lexer::{Lexeme, Lexer, SyntaxKind};
+use crate::parser::marker::Marker;
 use crate::parser::source::Source;
 use crate::syntax::SyntaxNode;
 use event::Event;
@@ -25,15 +27,18 @@ impl<'l, 'input> Parser<'l, 'input> {
     }
 
     fn parse(mut self) -> Vec<Event> {
-        self.start_node(SyntaxKind::Root);
+        let m = self.start();
         expr(&mut self);
-        self.finish_node();
+        m.complete(&mut self, SyntaxKind::Root);
 
         self.events
     }
 
     fn start_node(&mut self, kind: SyntaxKind) {
-        self.events.push(Event::StartNode { kind });
+        self.events.push(Event::StartNode {
+            kind,
+            forward_parent: None,
+        });
     }
 
     fn start_node_at(&mut self, checkpoint: usize, kind: SyntaxKind) {
@@ -59,6 +64,13 @@ impl<'l, 'input> Parser<'l, 'input> {
 
     fn peek(&mut self) -> Option<SyntaxKind> {
         self.source.peek_kind()
+    }
+
+    fn start(&mut self) -> Marker {
+        let pos = self.events.len();
+        self.events.push(Event::Placeholder);
+
+        Marker::new(pos)
     }
 }
 
@@ -102,7 +114,8 @@ mod tests {
             "123",
             expect![[r#"
 Root@0..3
-  Number@0..3 "123""#]],
+  Literal@0..3
+    Number@0..3 "123""#]],
         );
     }
 
@@ -112,7 +125,8 @@ Root@0..3
             "counter",
             expect![[r#"
 Root@0..7
-  Ident@0..7 "counter""#]],
+  VariableRef@0..7
+    Ident@0..7 "counter""#]],
         );
     }
 

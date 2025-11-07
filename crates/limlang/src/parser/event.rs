@@ -1,10 +1,11 @@
 use crate::lexer::SyntaxKind;
 use rowan::SmolStr;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(super) enum Event {
   StartNode {
-    kind: SyntaxKind
+    kind: SyntaxKind,
+    forward_parent: Option<usize>,
   },
   StartNodeAt {
     kind: SyntaxKind,
@@ -15,4 +16,5 @@ pub(super) enum Event {
     text: SmolStr
   },
   FinishNode,
+  Placeholder,
 }
